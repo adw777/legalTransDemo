@@ -5,12 +5,13 @@ import time
 import platform
 import base64
 import os
+import io
 
 # Set backend API URL (change this to your Ngrok URL when deployed)
 # Local development
 # API_URL = "http://localhost:8000"
 # Remote via Ngrok (replace with your actual Ngrok URL)
-API_URL = "https://487d-2401-4900-8843-57cc-5812-983e-7be5-a294.ngrok-free.app"  # ← Change this to your Ngrok URL
+API_URL = "https://e5e7-2401-4900-8843-57cc-a8fa-cf2c-9639-37a9.ngrok-free.app"  # ← Change this to your Ngrok URL
 
 # Set page configuration
 st.set_page_config(
@@ -77,27 +78,49 @@ def translate_legal_text(input_text, max_length=512, do_sample=False, temperatur
         st.error(f"Error during translation: {str(e)}")
         return f"अनुवाद में त्रुटि: {str(e)}\nकृपया छोटे इनपुट के साथ प्रयास करें।", None
 
-def display_file_translation(file):
-    """Handle file uploads and translation"""
+def translate_file(file, max_length=512, do_sample=False, temperature=0.7, num_beams=5):
+    """Send file to the backend API for translation"""
     try:
-        # Read the uploaded file
-        stringio = file.getvalue().decode("utf-8")
-        
-        with st.spinner("Translating uploaded file..."):
-            translation, model_info = translate_legal_text(stringio)
-        
-        if translation:
-            st.download_button(
-                label="Download Translation",
-                data=translation.encode('utf-8'),
-                file_name=f"translated_{file.name}",
-                mime="text/plain"
+        with st.spinner("Uploading and translating file..."):
+            # Prepare the files for upload
+            files = {"file": (file.name, file.getvalue(), file.type)}
+            
+            # Prepare the form data
+            form_data = {
+                "max_length": str(max_length),
+                "do_sample": str(do_sample).lower(),
+                "temperature": str(temperature),
+                "num_beams": str(num_beams)
+            }
+            
+            # Send the request
+            response = requests.post(
+                f"{API_URL}/translate/file",
+                files=files,
+                data=form_data,
+                timeout=300  # 5-minute timeout for long translations
             )
-        
-        return translation, model_info
+            
+            if response.status_code == 200:
+                result = response.json()
+                return result["translation"], result["original_text"], result["model_info"]
+            else:
+                st.error(f"API Error: {response.status_code}")
+                try:
+                    error_detail = response.json().get("detail", "Unknown error")
+                    return f"अनुवाद में त्रुटि: {error_detail}", None, None
+                except:
+                    return "अनुवाद में त्रुटि: API से कनेक्ट नहीं हो सका।", None, None
+    
+    except requests.exceptions.ConnectionError:
+        st.error("Connection Error: Could not connect to the translation server.")
+        return "अनुवाद में त्रुटि: अनुवाद सर्वर से कनेक्शन विफल हुआ।", None, None
+    except requests.exceptions.Timeout:
+        st.error("Timeout Error: The translation request took too long.")
+        return "अनुवाद में त्रुटि: अनुवाद अनुरोध का समय समाप्त हो गया।", None, None
     except Exception as e:
-        st.error(f"Error processing file: {str(e)}")
-        return None, None
+        st.error(f"Error during file translation: {str(e)}")
+        return f"अनुवाद में त्रुटि: {str(e)}", None, None
 
 def main():
     global API_URL
@@ -109,7 +132,7 @@ def main():
     st.markdown("""
     Translate legal English text to Hindi using a specialized model fine-tuned for legal domain translation.
     
-    **Model details:** [LegalLoRA-IndicTrans2-en_indic](https://huggingface.co/axondendriteplus/LegalLoRA-IndicTrans2-en_indic) - 
+    **Model details:** [Legal-IndicTrans2-en_indic](https://huggingface.co/axondendriteplus/Legal-IndicTrans2-en_indic) - 
     A PEFT/LoRA adaptation of [AI4Bharat's IndicTrans2](https://huggingface.co/ai4bharat/indictrans2-en-indic-1B) for legal domain.
     """)
     
@@ -148,6 +171,7 @@ def main():
     - Optimized for legal terminology
     - Handles complex legal sentences
     - Processes long documents in chunks
+    - Supports PDF and text files
     - Remote processing via API
     
     **Limitations:**
@@ -226,25 +250,64 @@ def main():
     
     with tab2:
         st.write("Upload an English legal document to translate:")
-        uploaded_file = st.file_uploader("Choose a file", type=['txt', 'docx', 'pdf'], disabled=not api_available)
+        
+        # Updated file uploader with explicit PDF support
+        uploaded_file = st.file_uploader("Choose a file", type=['txt', 'pdf'], disabled=not api_available)
         
         if uploaded_file is not None:
             # Display file details
             file_details = {"Filename": uploaded_file.name, "Filetype": uploaded_file.type, "Filesize": f"{uploaded_file.size / 1024:.2f} KB"}
             st.write(file_details)
             
-            # For PDF and DOCX files
+            # Show appropriate messages based on file type
             if uploaded_file.type == "application/pdf":
-                st.warning("PDF support requires additional libraries. Processing as plain text.")
-            elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-                st.warning("DOCX support requires additional libraries. Processing as plain text.")
+                st.info("PDF files are now supported! The text will be extracted and translated.")
             
-            # Handle translation
-            translation, model_info = display_file_translation(uploaded_file)
-            
-            if translation:
-                st.subheader("Hindi Translation:")
-                st.text_area("Uploaded File Translation", value=translation, height=300, label_visibility="collapsed")
+            # Add a button to start translation
+            if st.button("Translate File", type="primary", disabled=not api_available):
+                start_time = time.time()
+                
+                # Call the new file translation function
+                translation, original_text, model_info = translate_file(
+                    uploaded_file,
+                    max_length=max_length,
+                    do_sample=do_sample,
+                    temperature=temperature,
+                    num_beams=num_beams
+                )
+                
+                elapsed_time = time.time() - start_time
+                
+                if translation and original_text:
+                    # Display original text
+                    st.subheader("Original Text:")
+                    with st.expander("View Original Text", expanded=False):
+                        st.text_area("Original Content", value=original_text, height=200, label_visibility="collapsed")
+                    
+                    # Display translation
+                    st.subheader("Hindi Translation:")
+                    st.text_area("File Translation", value=translation, height=300, label_visibility="collapsed")
+                    
+                    # Show translation metadata
+                    if model_info:
+                        st.caption(f"Translation completed in {elapsed_time:.2f} seconds using {model_info.get('device', 'unknown')} device.")
+                    
+                    # Provide download buttons
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.download_button(
+                            label="Download Translation",
+                            data=translation.encode('utf-8'),
+                            file_name=f"translated_{uploaded_file.name.split('.')[0]}.txt",
+                            mime="text/plain"
+                        )
+                    with col2:
+                        st.download_button(
+                            label="Download Original Text",
+                            data=original_text.encode('utf-8'),
+                            file_name=f"original_{uploaded_file.name.split('.')[0]}.txt",
+                            mime="text/plain"
+                        )
 
 if __name__ == "__main__":
     main()
