@@ -98,7 +98,7 @@ def translate_file(file, max_length=512, do_sample=False, temperature=0.7, num_b
                 f"{API_URL}/translate/file",
                 files=files,
                 data=form_data,
-                timeout=300  # 5-minute timeout for long translations
+                timeout=600  # 5-minute timeout for long translations
             )
             
             if response.status_code == 200:
