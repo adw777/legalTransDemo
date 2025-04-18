@@ -11,7 +11,7 @@ import io
 # Local development
 # API_URL = "http://localhost:8000"
 # Remote via Ngrok (replace with your actual Ngrok URL)
-API_URL = "https://0c54-2401-4900-8843-57cc-5d63-9ac9-d879-3009.ngrok-free.app"  # ← Change this to your Ngrok URL
+API_URL = "https://64ff-2401-4900-8843-57cc-5d63-9ac9-d879-3009.ngrok-free.app"  # ← Change this to your Ngrok URL
 
 # Set page configuration
 st.set_page_config(
