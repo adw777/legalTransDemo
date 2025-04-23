@@ -262,7 +262,6 @@ import PyPDF2
 import docx
 import fitz  # PyMuPDF
 from docx import Document
-from fpdf import FPDF
 
 # Set page config
 st.set_page_config(
@@ -323,69 +322,6 @@ def translate_text(text):
             return f"Error: {response.status_code} - {response.text}"
     except Exception as e:
         return f"Translation API error: {str(e)}"
-
-# # Custom PDF class with Hindi support
-# class HindiPDF(FPDF):
-#     def header(self):
-#         # Set up header if needed
-#         self.set_font('Arial', 'B', 12)
-#         self.cell(0, 10, 'Hindi Legal Translation', 0, 1, 'C')
-#         self.ln(5)
-        
-#     def footer(self):
-#         # Set up footer
-#         self.set_y(-15)
-#         self.set_font('Arial', 'I', 8)
-#         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
-        
-#     def chapter_body(self, text):
-#         # Add Hindi text with proper formatting
-#         self.set_font('Arial', '', 11)
-        
-#         # Calculate how many characters we can fit per line
-#         # This is an approximation and may need adjustment
-#         line_width = self.w - 2 * self.l_margin
-#         char_width = self.get_string_width('A')  # Average character width
-#         chars_per_line = int(line_width / char_width * 1.8)  # Adjust factor for Hindi
-        
-#         # Process text paragraph by paragraph
-#         paragraphs = text.split('\n\n')
-#         for paragraph in paragraphs:
-#             # Simple text wrapping
-#             remaining = paragraph
-#             while remaining:
-#                 if len(remaining) <= chars_per_line:
-#                     self.cell(0, 6, remaining, 0, 1)
-#                     remaining = ''
-#                 else:
-#                     # Find a good breaking point
-#                     cut_at = chars_per_line
-#                     while cut_at > 0 and remaining[cut_at] != ' ':
-#                         cut_at -= 1
-#                     if cut_at == 0:  # No space found, force break
-#                         cut_at = chars_per_line
-                        
-#                     self.cell(0, 6, remaining[:cut_at], 0, 1)
-#                     remaining = remaining[cut_at:].lstrip()
-                
-#                 # Check if we need a new page
-#                 if self.get_y() > self.page_break_trigger:
-#                     self.add_page()
-            
-#             # Add spacing between paragraphs
-#             self.ln(5)
-
-# Function to save text as PDF using FPDF
-# def save_as_pdf(text):
-#     pdf = HindiPDF()
-#     pdf.add_page()
-#     pdf.chapter_body(text)
-    
-#     # Save to bytes buffer
-#     buffer = io.BytesIO()
-#     pdf.output(buffer)
-#     buffer.seek(0)
-#     return buffer.getvalue()
 
 # Function to save text as DOCX
 def save_as_docx(text):
@@ -464,27 +400,20 @@ def main():
             # Download options
             st.markdown("### Download Options")
             
-            col1, col2, col3 = st.columns(3)
+            col1, col2 = st.columns(2)
             
             # Get base filename without extension
             base_name = Path(st.session_state.file_name).stem
             
-            # # PDF download
-            # with col1:
-            #     if st.button("Download as PDF"):
-            #         with st.spinner("Preparing PDF..."):
-            #             pdf_bytes = save_as_pdf(st.session_state.translated_text)
-            #             st.markdown(get_download_link(pdf_bytes, f"{base_name}_hindi.pdf", "pdf"), unsafe_allow_html=True)
-            
             # DOCX download
-            with col2:
+            with col1:
                 if st.button("Download as DOCX"):
                     with st.spinner("Preparing DOCX..."):
                         docx_bytes = save_as_docx(st.session_state.translated_text)
                         st.markdown(get_download_link(docx_bytes, f"{base_name}_hindi.docx", "docx"), unsafe_allow_html=True)
             
             # TXT download
-            with col3:
+            with col2:
                 if st.button("Download as TXT"):
                     with st.spinner("Preparing TXT..."):
                         txt_bytes = st.session_state.translated_text.encode('utf-8')
