@@ -11,7 +11,9 @@ import io
 # Local development
 # API_URL = "http://localhost:8000"
 # Remote via Ngrok (replace with your actual Ngrok URL)
-API_URL = "https://82f9-2401-4900-8843-57cc-5d63-9ac9-d879-3009.ngrok-free.app"  # ← Change this to your Ngrok URL
+# API_URL = "https://82f9-2401-4900-8843-57cc-5d63-9ac9-d879-3009.ngrok-free.app"  # ← Change this to your Ngrok URL
+
+API_URL = "https://d89e-2401-4900-8843-57cc-cdb6-af8-25c0-bb20.ngrok-free.app"
 
 # Set page configuration
 st.set_page_config(
@@ -94,13 +96,20 @@ def translate_file(file, max_length=512, do_sample=False, temperature=0.7, num_b
             }
             
             # Send the request
+            # response = requests.post(
+            #     f"{API_URL}/translate/file",
+            #     files=files,
+            #     data=form_data,
+            #     timeout=600  # 5-minute timeout for long translations
+            # )
+            
             response = requests.post(
-                f"{API_URL}/translate/file",
+                f"{API_URL}/translate",
                 files=files,
                 data=form_data,
                 timeout=600  # 5-minute timeout for long translations
             )
-            
+
             if response.status_code == 200:
                 result = response.json()
                 return result["translation"], result["original_text"], result["model_info"]

@@ -1,2 +1,7 @@
 streamlit
 requests
+# for gemini 
+PyPDF2 
+python-docx 
+PyMuPDF 
+reportlab
